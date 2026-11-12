@@ -13,7 +13,7 @@ Paper Studio gives exam papers, worksheets, textbooks and research papers a shar
 
 ## Features
 
-- Handwriting on the original PDF, with three pen widths, three colours, whole-stroke erasing, undo and redo.
+- A paper-focused workspace with handwriting on the original PDF, three pen widths, three colours, whole-stroke erasing, undo and redo.
 - A stopwatch by default, a countdown for timed practice, and a timing-off mode for reading and annotation.
 - Total and per-page active time, with a Freeze button that pauses timing and locks editing.
 - Extra answer sheets for longer responses and optional single-answer MC grids with 2–6 choices.
@@ -25,9 +25,11 @@ Paper Studio gives exam papers, worksheets, textbooks and research papers a shar
 
 1. Open the [public demo](https://aseawa.github.io/paper-studio/) in a current desktop Chrome or Edge browser, or in Safari or Chrome on iPadOS 18 or later.
 2. Choose **Import PDF**, enter a document name and select **Stopwatch**, **Countdown** or **Off**. Open **Paper options** to configure an MC grid.
-3. Open the PDF, press **Start**, and write. Use **Pen check** to inspect the input reported by your pen driver.
+3. Open the PDF, press **Start**, and write. Drag with a finger to move around the page; use the floating arrows or the pages button to change pages.
 4. Press **Freeze** to pause. You can browse pages while editing is locked. Press **Resume** to continue.
 5. Choose **Export** to save your work.
+
+The pages list and MC answers open over the paper when needed. Open **More options** (the three dots) for zoom, pen width, extra answer sheets, pen check and help. Page times are shown in the pages list and included in exports.
 
 | Export          | Contents                                                                     | Typical use                                 |
 | --------------- | ---------------------------------------------------------------------------- | ------------------------------------------- |
@@ -49,7 +51,7 @@ The PDF also contains an embedded `study-data.json` attachment. A separate JSON 
 | Previous / next page | `←` / `→`                                |
 | Freeze / resume      | `Space`, when focus is outside a control |
 
-Pressure is used when the browser and pen driver provide it. Fixed-pressure pen and mouse input also work. Finger touches are excluded from ink input.
+Pressure is used when the browser and pen driver provide it. Fixed-pressure pen and mouse input also work. Finger touches move the paper and do not create ink.
 
 ## Timing and storage
 

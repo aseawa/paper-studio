@@ -26,6 +26,7 @@ import {
   FileJson,
   LockKeyhole,
   HelpCircle,
+  MoreHorizontal,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import InkSurface, { type InkTool } from './components/ink-surface';
@@ -65,7 +66,7 @@ export default function Studio() {
     [saved, setSaved] = useState('Saved on this device');
   const [showUpdateNotice, setShowUpdateNotice] = useState(() => {
     try {
-      return localStorage.getItem('paper-studio.dismissed-update') !== '2.0.1';
+      return localStorage.getItem('paper-studio.dismissed-update') !== '2.1.0';
     } catch {
       return true;
     }
@@ -73,7 +74,7 @@ export default function Studio() {
   const [tool, setTool] = useState<InkTool>('pen'),
     [colour, setColour] = useState('#202124'),
     [width, setWidth] = useState(1.6);
-  const [sidebar, setSidebar] = useState(true),
+  const [sidebar, setSidebar] = useState(false),
     [mcOpen, setMcOpen] = useState(false),
     [zoom, setZoom] = useState(0),
     [areaWidth, setAreaWidth] = useState(900),
@@ -88,10 +89,10 @@ export default function Studio() {
     [count, setCount] = useState(10),
     [choices, setChoices] = useState(4),
     [first, setFirst] = useState(1);
-  const [lockState, setLockState] = useState<'checking' | 'owned' | 'other'>('checking'),
-    [inputInfo, setInputInfo] = useState('Tablet & mouse ready');
+  const [lockState, setLockState] = useState<'checking' | 'owned' | 'other'>('checking');
   const picker = useRef<HTMLInputElement>(null),
     viewport = useRef<HTMLDivElement>(null),
+    menu = useRef<HTMLDetailsElement>(null),
     finish = useRef<(() => void) | null>(null),
     pdfBytes = useRef<Uint8Array | null>(null);
   const engineRef = useRef(engine);
@@ -105,9 +106,16 @@ export default function Studio() {
     elapsed = s ? totalMs(s) : 0;
   const deadline = s ? limitMs(s) : null;
   const timerOff = s?.timerMode === 'off';
+  const timerDescription = timerOff
+    ? 'Timing off'
+    : deadline === null
+      ? 'Study time'
+      : elapsed > deadline
+        ? 'Overtime'
+        : 'Time remaining';
   const running = s?.status === 'running',
     editable = !!running && lockState === 'owned' && pageReady;
-  const scale = page ? zoom || Math.min(1.6, Math.max(0.25, (areaWidth - 72) / page.width)) : 1;
+  const scale = page ? zoom || Math.min(2.5, Math.max(0.25, (areaWidth - 16) / page.width)) : 1;
   const persist = (e = engineRef.current) => {
     if (!e || lockOwner.current !== e.data.id) return Promise.resolve(true);
     const rev = ++revision.current;
@@ -269,6 +277,13 @@ export default function Studio() {
     return () => obs.disconnect();
   }, [engine]);
   useEffect(() => {
+    const closeMenu = (event: PointerEvent) => {
+      if (menu.current && !menu.current.contains(event.target as Node)) menu.current.open = false;
+    };
+    document.addEventListener('pointerdown', closeMenu);
+    return () => document.removeEventListener('pointerdown', closeMenu);
+  }, []);
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
         !engine ||
@@ -292,7 +307,7 @@ export default function Studio() {
       if (key === 'p') setTool('pen');
       if (key === 'e') setTool('eraser');
       if (key === 'h') setTool('hand');
-      if (key === ' ' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+      if (key === ' ' && !/^(BUTTON|SUMMARY|A)$/.test((e.target as HTMLElement).tagName)) {
         e.preventDefault();
         if (engine.data.status === 'running') freeze();
         else if (lockState === 'owned' && pageReady) {
@@ -325,7 +340,8 @@ export default function Studio() {
     setPdf(next);
     setEngine(new PracticeEngine(practice));
     setPageReady(false);
-    setMcOpen(practice.format !== 'written');
+    setSidebar(false);
+    setMcOpen(false);
     setZoom(0);
     setModal(null);
     setSaved('Saved on this device');
@@ -519,67 +535,32 @@ export default function Studio() {
         aria-label="Choose PDF or editable backup"
         onChange={(e) => void importFile(e.target.files?.[0])}
       />
-      <header className="app-header">
-        <button
-          className="brand"
-          onClick={() => {
-            if (s) void home();
-          }}
-          aria-label="Paper Studio library"
-        >
-          <span className="brand-mark">
-            <FileText size={23} strokeWidth={1.7} />
-          </span>
-          <span>
-            Paper Studio<small>PDF WORKSPACE</small>
-          </span>
-        </button>
-        {s && (
-          <div className="document-title">
-            <span>{s.title}</span>
-            <small>
-              <span className={saved === 'Not saved' ? 'save-error' : 'save-dot'} />
-              {saved}
-            </small>
+      {!s && (
+        <header className="app-header">
+          <div className="brand">
+            <span className="brand-mark">
+              <FileText size={23} strokeWidth={1.7} />
+            </span>
+            <span>
+              Paper Studio<small>PDF WORKSPACE</small>
+            </span>
           </div>
-        )}
-        <div className="header-actions">
-          <button
-            className="quiet-button pen-check-button"
-            onClick={() => {
-              if (s) freeze('pen_check');
-              setModal('pen');
-            }}
-          >
-            <Tablet size={18} />
-            <span>Pen check</span>
-          </button>
-          <button
-            className="quiet-button"
-            disabled={!!busy}
-            onClick={() => {
-              if (s) freeze('file_picker');
-              picker.current?.click();
-            }}
-          >
-            <Upload size={18} />
-            <span>Import PDF</span>
-          </button>
-          {s && (
-            <button
-              className="primary-button export-button"
-              disabled={!!busy}
-              onClick={() => {
-                freeze('export_opened');
-                setModal('export');
-              }}
-            >
-              <Download size={17} />
-              Export
+          <div className="header-actions">
+            <button className="quiet-button pen-check-button" onClick={() => setModal('pen')}>
+              <Tablet size={18} />
+              <span>Pen check</span>
             </button>
-          )}
-        </div>
-      </header>
+            <button
+              className="quiet-button"
+              disabled={!!busy}
+              onClick={() => picker.current?.click()}
+            >
+              <Upload size={18} />
+              <span>Import PDF</span>
+            </button>
+          </div>
+        </header>
+      )}
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
@@ -591,7 +572,7 @@ export default function Studio() {
       {!s && library.length > 0 && showUpdateNotice && (
         <div className="update-banner" role="status">
           <span>
-            Paper Studio 2.0.1 improves PDF rendering on iPad.{' '}
+            Paper Studio 2.1 gives your paper more room and adds finger scrolling.{' '}
             <a
               href="https://github.com/aseawa/paper-studio/releases"
               target="_blank"
@@ -606,7 +587,7 @@ export default function Studio() {
             onClick={() => {
               setShowUpdateNotice(false);
               try {
-                localStorage.setItem('paper-studio.dismissed-update', '2.0.1');
+                localStorage.setItem('paper-studio.dismissed-update', '2.1.0');
               } catch {
                 // The notification remains dismissed for this session.
               }
@@ -732,109 +713,6 @@ export default function Studio() {
         </div>
       ) : (
         <>
-          <div className="study-bar">
-            <div className="timer-block">
-              <Clock3 size={20} />
-              <div>
-                <span className="timer-label">
-                  {timerOff
-                    ? 'READ & ANNOTATE'
-                    : deadline === null
-                      ? 'STUDY TIME'
-                      : elapsed > deadline
-                        ? 'OVERTIME'
-                        : 'TIME REMAINING'}
-                </span>
-                <strong
-                  className={
-                    deadline !== null && elapsed >= deadline
-                      ? 'overtime'
-                      : timerOff
-                        ? 'off-label'
-                        : ''
-                  }
-                  data-testid="remaining-time"
-                >
-                  {timerOff
-                    ? 'Timing off'
-                    : timeLabel(deadline === null ? elapsed : Math.abs(deadline - elapsed))}
-                </strong>
-              </div>
-              {deadline !== null && (
-                <>
-                  <span className="timer-divider" />
-                  <div className="elapsed-label">
-                    <span>
-                      Worked <b data-testid="elapsed-time">{timeLabel(elapsed)}</b>
-                    </span>
-                    <small>
-                      {s.minutes} min limit{s.preset ? ' · preset' : ''}
-                    </small>
-                  </div>
-                </>
-              )}
-            </div>
-            <button
-              className={running ? 'freeze-button' : 'resume-button'}
-              disabled={lockState !== 'owned' || (!running && !pageReady) || !!busy}
-              onClick={() => {
-                if (running) freeze();
-                else {
-                  engine!.start(performance.now(), s.status === 'expired');
-                  changed();
-                }
-              }}
-            >
-              {running ? (
-                <Pause size={17} fill="currentColor" />
-              ) : (
-                <Play size={17} fill="currentColor" />
-              )}
-              {running
-                ? 'Freeze'
-                : s.status === 'ready'
-                  ? 'Start'
-                  : s.status === 'expired'
-                    ? 'Continue in overtime'
-                    : 'Resume'}
-            </button>
-            <span className={`session-status ${running ? 'is-running' : ''}`}>
-              <span />
-              {running
-                ? 'In progress'
-                : s.status === 'ready'
-                  ? 'Ready when you are'
-                  : s.status === 'expired'
-                    ? 'Time is up · answers locked'
-                    : timerOff
-                      ? 'Frozen · editing locked'
-                      : 'Frozen · timer & editing locked'}
-            </span>
-            <div className="study-bar-right">
-              <button
-                className="quiet-button compact"
-                disabled={!editable}
-                onClick={() => {
-                  finish.current?.();
-                  engine!.addAnswerPage(performance.now());
-                  setPageReady(false);
-                  changed();
-                }}
-              >
-                <Plus size={17} />
-                <span>Answer sheet</span>
-              </button>
-              {s.format !== 'written' && (
-                <button
-                  className={`quiet-button compact ${mcOpen ? 'selected' : ''}`}
-                  onClick={() => setMcOpen(!mcOpen)}
-                >
-                  <ListChecks size={17} />
-                  <span>MC answers</span>
-                </button>
-              )}
-            </div>
-          </div>
           {lockState === 'other' && (
             <div className="info-banner">
               <LockKeyhole size={16} />
@@ -842,58 +720,35 @@ export default function Studio() {
             </div>
           )}
           <div className="workspace">
-            {sidebar && (
-              <aside className="page-sidebar">
-                <div className="sidebar-heading">
-                  <span>PAGES</span>
+            <section className="paper-area" aria-label="Paper workspace">
+              <div className="writing-toolbar">
+                <div className="workspace-leading">
                   <button
                     className="icon-button"
-                    aria-label="Hide pages"
-                    onClick={() => setSidebar(false)}
+                    title="Your papers"
+                    aria-label="Your papers"
+                    onClick={() => void home()}
                   >
-                    <PanelLeftClose size={17} />
+                    <ArrowLeft size={20} />
                   </button>
+                  <button
+                    className={`icon-button ${sidebar ? 'selected' : ''}`}
+                    title={sidebar ? 'Hide pages' : 'Show pages'}
+                    aria-label={sidebar ? 'Hide pages' : 'Show pages'}
+                    aria-expanded={sidebar}
+                    onClick={() => {
+                      setSidebar(!sidebar);
+                      setMcOpen(false);
+                    }}
+                  >
+                    {sidebar ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+                  </button>
+                  <span className="workspace-title" title={s.title}>
+                    {s.title}
+                  </span>
                 </div>
-                <nav aria-label="Paper pages">
-                  {s.pages.map((p, index) => (
-                    <button
-                      key={index}
-                      className={`page-item ${s.currentPage === index ? 'active' : ''}`}
-                      aria-current={s.currentPage === index ? 'page' : undefined}
-                      onClick={() => {
-                        if (index !== s.currentPage) navigate(index);
-                      }}
-                    >
-                      <span className="page-number">
-                        {index + 1}
-                        {p.strokes.length > 0 && <i />}
-                      </span>
-                      <span>
-                        <strong>{p.kind === 'answer' ? p.label : `Page ${index + 1}`}</strong>
-                        <small>{timerOff ? 'Untimed' : timeLabel(p.elapsedMs)}</small>
-                      </span>
-                    </button>
-                  ))}
-                </nav>
-                <button className="library-back" onClick={() => void home()}>
-                  <ArrowLeft size={15} />
-                  Your papers
-                </button>
-              </aside>
-            )}
-            <section className="paper-area">
-              <div className="writing-toolbar">
-                <div className="tools">
-                  {!sidebar && (
-                    <button
-                      className="icon-button"
-                      title="Show pages"
-                      aria-label="Show pages"
-                      onClick={() => setSidebar(true)}
-                    >
-                      <PanelLeftOpen size={19} />
-                    </button>
-                  )}
+
+                <div className="tools" role="toolbar" aria-label="Writing tools">
                   {(
                     [
                       { id: 'pen', label: 'Pen (P)', Icon: PenLine },
@@ -912,10 +767,39 @@ export default function Studio() {
                         setTool(id);
                       }}
                     >
-                      <Icon size={19} />
+                      <Icon size={20} />
                     </button>
                   ))}
-                  <span className="toolbar-divider" />
+                  <span className="toolbar-divider" aria-hidden="true" />
+                  <button
+                    className="icon-button"
+                    title="Undo (Ctrl+Z)"
+                    aria-label="Undo"
+                    disabled={!editable || !s.undo.length}
+                    onClick={() => {
+                      finish.current?.();
+                      engine!.tick(performance.now());
+                      engine!.undo();
+                      changed();
+                    }}
+                  >
+                    <Undo2 size={20} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    title="Redo (Ctrl+Shift+Z)"
+                    aria-label="Redo"
+                    disabled={!editable || !s.redo.length}
+                    onClick={() => {
+                      finish.current?.();
+                      engine!.tick(performance.now());
+                      engine!.redo();
+                      changed();
+                    }}
+                  >
+                    <Redo2 size={20} />
+                  </button>
+                  <span className="toolbar-divider" aria-hidden="true" />
                   {['#202124', '#1967d2', '#c5221f'].map((c) => (
                     <button
                       key={c}
@@ -936,208 +820,326 @@ export default function Studio() {
                       <span />
                     </button>
                   ))}
-                  <select
-                    className="width-select"
-                    aria-label="Pen width"
-                    value={width}
-                    onChange={(e) => {
-                      finish.current?.();
-                      setWidth(Number(e.target.value));
-                    }}
-                  >
-                    <option value={1}>Fine</option>
-                    <option value={1.6}>Medium</option>
-                    <option value={2.8}>Bold</option>
-                  </select>
-                  <span className="toolbar-divider" />
-                  <button
-                    className="icon-button"
-                    title="Undo (Ctrl+Z)"
-                    aria-label="Undo"
-                    disabled={!editable || !s.undo.length}
-                    onClick={() => {
-                      finish.current?.();
-                      engine!.tick(performance.now());
-                      engine!.undo();
-                      changed();
-                    }}
-                  >
-                    <Undo2 size={19} />
-                  </button>
-                  <button
-                    className="icon-button"
-                    title="Redo (Ctrl+Shift+Z)"
-                    aria-label="Redo"
-                    disabled={!editable || !s.redo.length}
-                    onClick={() => {
-                      finish.current?.();
-                      engine!.tick(performance.now());
-                      engine!.redo();
-                      changed();
-                    }}
-                  >
-                    <Redo2 size={19} />
-                  </button>
                 </div>
-                <div className="view-tools">
-                  <select
-                    aria-label="Zoom"
-                    value={zoom}
-                    onChange={(e) => {
-                      finish.current?.();
-                      setZoom(Number(e.target.value));
+
+                <div className="workspace-actions">
+                  <div
+                    className={`compact-timer ${deadline !== null && elapsed >= deadline ? 'overtime' : ''}`}
+                    title={timerDescription}
+                    role="timer"
+                    aria-label={`${timerDescription}: ${timerOff ? 'untimed' : timeLabel(deadline === null ? elapsed : Math.abs(deadline - elapsed))}`}
+                  >
+                    <Clock3 size={16} />
+                    <span data-testid="remaining-time">
+                      {timerOff
+                        ? 'Untimed'
+                        : `${deadline !== null && elapsed > deadline ? '+' : ''}${timeLabel(deadline === null ? elapsed : Math.abs(deadline - elapsed))}`}
+                    </span>
+                    {!timerOff && deadline !== null && elapsed <= deadline && (
+                      <span className="timer-kind">left</span>
+                    )}
+                    {deadline !== null && (
+                      <span className="sr-only" data-testid="elapsed-time">
+                        Worked {timeLabel(elapsed)} of {s.minutes} minutes
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    className={`session-toggle ${running ? 'is-running' : ''}`}
+                    disabled={lockState !== 'owned' || (!running && !pageReady) || !!busy}
+                    aria-label={
+                      running
+                        ? 'Freeze'
+                        : s.status === 'ready'
+                          ? 'Start'
+                          : s.status === 'expired'
+                            ? 'Continue in overtime'
+                            : 'Resume'
+                    }
+                    onClick={() => {
+                      if (running) freeze();
+                      else {
+                        engine!.start(performance.now(), s.status === 'expired');
+                        changed();
+                      }
                     }}
                   >
-                    <option value={0}>Fit width</option>
-                    <option value={0.75}>75%</option>
-                    <option value={1}>100%</option>
-                    <option value={1.25}>125%</option>
-                    <option value={1.5}>150%</option>
-                    <option value={2}>200%</option>
-                  </select>
+                    {running ? (
+                      <Pause size={15} fill="currentColor" />
+                    ) : (
+                      <Play size={15} fill="currentColor" />
+                    )}
+                    <span>
+                      {running
+                        ? 'Freeze'
+                        : s.status === 'ready'
+                          ? 'Start'
+                          : s.status === 'expired'
+                            ? 'Overtime'
+                            : 'Resume'}
+                    </span>
+                  </button>
+                  {s.format !== 'written' && (
+                    <button
+                      className={`icon-button ${mcOpen ? 'selected' : ''}`}
+                      title="MC answers"
+                      aria-label="MC answers"
+                      aria-expanded={mcOpen}
+                      onClick={() => {
+                        setMcOpen(!mcOpen);
+                        setSidebar(false);
+                      }}
+                    >
+                      <ListChecks size={20} />
+                    </button>
+                  )}
                   <button
                     className="icon-button"
-                    title="Help & shortcuts"
-                    aria-label="Help and shortcuts"
+                    title="Export"
+                    aria-label="Export"
+                    disabled={!!busy}
                     onClick={() => {
-                      freeze('help_opened');
-                      setModal('help');
+                      freeze('export_opened');
+                      setModal('export');
                     }}
                   >
-                    <HelpCircle size={18} />
+                    <Download size={20} />
                   </button>
+                  <details className="workspace-menu" ref={menu}>
+                    <summary className="icon-button" aria-label="More options" title="More options">
+                      <MoreHorizontal size={21} />
+                    </summary>
+                    <div className="workspace-menu-content">
+                      <label>
+                        <span>Pen width</span>
+                        <select
+                          aria-label="Pen width"
+                          value={width}
+                          onChange={(event) => {
+                            finish.current?.();
+                            setWidth(Number(event.target.value));
+                          }}
+                        >
+                          <option value={1}>Fine</option>
+                          <option value={1.6}>Medium</option>
+                          <option value={2.8}>Bold</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Zoom</span>
+                        <select
+                          aria-label="Zoom"
+                          value={zoom}
+                          onChange={(event) => {
+                            finish.current?.();
+                            setZoom(Number(event.target.value));
+                          }}
+                        >
+                          <option value={0}>Fit width</option>
+                          <option value={0.75}>75%</option>
+                          <option value={1}>100%</option>
+                          <option value={1.25}>125%</option>
+                          <option value={1.5}>150%</option>
+                          <option value={2}>200%</option>
+                        </select>
+                      </label>
+                      <button
+                        disabled={!editable}
+                        onClick={() => {
+                          if (menu.current) menu.current.open = false;
+                          finish.current?.();
+                          engine!.addAnswerPage(performance.now());
+                          setPageReady(false);
+                          changed();
+                        }}
+                      >
+                        <Plus size={17} /> Add answer sheet
+                      </button>
+                      <button
+                        disabled={!!busy}
+                        onClick={() => {
+                          if (menu.current) menu.current.open = false;
+                          freeze('file_picker');
+                          picker.current?.click();
+                        }}
+                      >
+                        <Upload size={17} /> Import PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (menu.current) menu.current.open = false;
+                          freeze('pen_check');
+                          setModal('pen');
+                        }}
+                      >
+                        <Tablet size={17} /> Pen check
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (menu.current) menu.current.open = false;
+                          freeze('help_opened');
+                          setModal('help');
+                        }}
+                      >
+                        <HelpCircle size={17} /> Help and shortcuts
+                      </button>
+                      <p className="save-status" role="status">
+                        {saved}
+                      </p>
+                    </div>
+                  </details>
                 </div>
               </div>
-              <div className="paper-viewport" ref={viewport}>
-                <div className="paper-caption">
-                  <span>{page!.label}</span>
-                  {!timerOff && (
-                    <span>
-                      <Clock3 size={13} />
-                      On this page <b data-testid="page-time">{timeLabel(page!.elapsedMs)}</b>
-                    </span>
-                  )}
-                </div>
-                <div className="paper-centre" style={{ minWidth: page!.width * scale + 72 }}>
-                  <div
-                    className="paper-sheet"
-                    style={{ width: page!.width * scale, height: page!.height * scale }}
-                    key={`${s.id}-${s.currentPage}`}
-                  >
-                    {pdf && (
-                      <PdfPaper
-                        pdf={pdf}
+
+              <div className="canvas-region">
+                <div className="paper-viewport" ref={viewport}>
+                  <div className="paper-centre" style={{ minWidth: page!.width * scale + 16 }}>
+                    <div
+                      className="paper-sheet"
+                      style={{ width: page!.width * scale, height: page!.height * scale }}
+                      key={`${s.id}-${s.currentPage}`}
+                    >
+                      {pdf && (
+                        <PdfPaper
+                          pdf={pdf}
+                          page={page!}
+                          scale={scale}
+                          onReady={setPageReady}
+                          onError={setError}
+                        />
+                      )}
+                      <InkSurface
                         page={page!}
                         scale={scale}
-                        onReady={setPageReady}
-                        onError={setError}
+                        tool={tool}
+                        colour={colour}
+                        width={width}
+                        locked={!editable}
+                        panWithTouch
+                        finishRef={finish}
+                        onEdit={(before, after) => {
+                          if (lockState !== 'owned') return;
+                          engine!.commit({ kind: 'ink', page: s.currentPage, before, after });
+                          engine!.tick(performance.now());
+                          changed();
+                        }}
                       />
-                    )}
-                    <InkSurface
-                      page={page!}
-                      scale={scale}
-                      tool={tool}
-                      colour={colour}
-                      width={width}
-                      locked={!editable}
-                      finishRef={finish}
-                      onInput={(kind, pressure) => {
-                        if (pressure > 0)
-                          setInputInfo(
-                            kind === 'pen'
-                              ? `Pen connected · ${Math.round(pressure * 100)}% pressure`
-                              : 'Mouse input · fixed pressure',
-                          );
-                      }}
-                      onEdit={(before, after) => {
-                        if (lockState !== 'owned') return;
-                        engine!.commit({ kind: 'ink', page: s.currentPage, before, after });
-                        engine!.tick(performance.now());
-                        changed();
-                      }}
-                    />
-                    {!pageReady && <div className="page-loading">Rendering page…</div>}
+                      {!pageReady && <div className="page-loading">Rendering page…</div>}
+                    </div>
                   </div>
                 </div>
-                <div className="page-bottom">
+
+                <nav className="floating-page-nav" aria-label="Page navigation">
                   <button
-                    className="quiet-button"
+                    aria-label="Previous page"
+                    title="Previous page"
                     disabled={s.currentPage === 0}
                     onClick={() => navigate(s.currentPage - 1)}
                   >
-                    <ChevronLeft size={17} />
-                    Previous
+                    <ChevronLeft size={18} />
                   </button>
-                  <span>
-                    {s.currentPage + 1} of {s.pages.length}
+                  <span
+                    title={
+                      timerOff ? 'Timing off' : `Time on this page: ${timeLabel(page!.elapsedMs)}`
+                    }
+                  >
+                    {s.currentPage + 1} / {s.pages.length}
                   </span>
                   <button
-                    className="quiet-button"
+                    aria-label="Next page"
+                    title="Next page"
                     disabled={s.currentPage === s.pages.length - 1}
                     onClick={() => navigate(s.currentPage + 1)}
                   >
-                    Next
-                    <ChevronRight size={17} />
+                    <ChevronRight size={18} />
                   </button>
-                </div>
-              </div>
-              <div className="workspace-footer">
-                <span>
-                  <span className="connection-dot" />
-                  {inputInfo}
-                </span>
-                <span className="shortcut-hint">P pen · E eraser · Ctrl+Z undo · Space freeze</span>
+                </nav>
+
+                {sidebar && (
+                  <aside className="page-sidebar" aria-label="Pages">
+                    <div className="sidebar-heading">
+                      <h2>Pages</h2>
+                      <button
+                        className="icon-button"
+                        aria-label="Close pages"
+                        onClick={() => setSidebar(false)}
+                      >
+                        <X size={19} />
+                      </button>
+                    </div>
+                    <nav aria-label="Paper pages">
+                      {s.pages.map((p, index) => (
+                        <button
+                          key={index}
+                          className={`page-item ${s.currentPage === index ? 'active' : ''}`}
+                          aria-current={s.currentPage === index ? 'page' : undefined}
+                          onClick={() => {
+                            if (index !== s.currentPage) navigate(index);
+                            setSidebar(false);
+                          }}
+                        >
+                          <span className="page-number">
+                            {index + 1}
+                            {p.strokes.length > 0 && <i />}
+                          </span>
+                          <span>
+                            <strong>{p.kind === 'answer' ? p.label : `Page ${index + 1}`}</strong>
+                            <small>{timerOff ? 'Untimed' : timeLabel(p.elapsedMs)}</small>
+                          </span>
+                        </button>
+                      ))}
+                    </nav>
+                  </aside>
+                )}
+                {mcOpen && s.format !== 'written' && (
+                  <aside className="mc-panel" aria-label="MC answers">
+                    <div className="mc-heading">
+                      <div>
+                        <h2>MC answers</h2>
+                        <p>
+                          {Object.keys(s.answers).length} of {s.mcCount} answered
+                        </p>
+                      </div>
+                      <button
+                        className="icon-button"
+                        aria-label="Hide MC answers"
+                        onClick={() => setMcOpen(false)}
+                      >
+                        <X size={19} />
+                      </button>
+                    </div>
+                    <p className="mc-tip">Tap a choice. Tap again to clear.</p>
+                    <div className="mc-rows">
+                      {Array.from({ length: s.mcCount }, (_, i) => String(i + s.mcStart)).map(
+                        (q) => (
+                          <div className="mc-row" key={q}>
+                            <span>{q.padStart(2, '0')}</span>
+                            <div role="group" aria-label={`Question ${q}`}>
+                              {Array.from('ABCDEF'.slice(0, s.mcChoices)).map((choice) => (
+                                <button
+                                  key={choice}
+                                  className={s.answers[q]?.choice === choice ? 'picked' : ''}
+                                  aria-label={`Question ${q}: ${choice}`}
+                                  aria-pressed={s.answers[q]?.choice === choice}
+                                  disabled={!editable}
+                                  onClick={() => {
+                                    finish.current?.();
+                                    engine!.answer(q, choice, performance.now());
+                                    changed();
+                                  }}
+                                >
+                                  {choice}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </aside>
+                )}
               </div>
             </section>
-            {mcOpen && s.format !== 'written' && (
-              <aside className="mc-panel">
-                <div className="mc-heading">
-                  <div>
-                    <h2>MC answers</h2>
-                    <p>
-                      {Object.keys(s.answers).length} of {s.mcCount} answered
-                    </p>
-                  </div>
-                  <button
-                    className="icon-button"
-                    aria-label="Hide MC answers"
-                    onClick={() => setMcOpen(false)}
-                  >
-                    <X size={17} />
-                  </button>
-                </div>
-                <p className="mc-tip">Tap a choice. Tap again to clear.</p>
-                <div className="mc-rows">
-                  {Array.from({ length: s.mcCount }, (_, i) => String(i + s.mcStart)).map((q) => (
-                    <div className="mc-row" key={q}>
-                      <span>{q.padStart(2, '0')}</span>
-                      <div role="group" aria-label={`Question ${q}`}>
-                        {Array.from('ABCDEF'.slice(0, s.mcChoices)).map((choice) => (
-                          <button
-                            key={choice}
-                            className={s.answers[q]?.choice === choice ? 'picked' : ''}
-                            aria-label={`Question ${q}: ${choice}`}
-                            aria-pressed={s.answers[q]?.choice === choice}
-                            disabled={!editable}
-                            onClick={() => {
-                              finish.current?.();
-                              engine!.answer(q, choice, performance.now());
-                              changed();
-                            }}
-                          >
-                            {choice}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mc-footer">
-                  <FileText size={15} />
-                  Answers are included in your PDF.
-                </div>
-              </aside>
-            )}
           </div>
         </>
       )}
@@ -1379,7 +1381,8 @@ export default function Studio() {
             </p>
             <p>
               <b>Start and write.</b> Use your pen or mouse on any page. The eraser removes complete
-              strokes. Ctrl+Z and Ctrl+Shift+Z undo and redo. Add an answer sheet for more space.
+              strokes. Drag with a finger to move around the page. Ctrl+Z and Ctrl+Shift+Z undo and
+              redo. Find zoom, pen width and extra answer sheets under More options.
             </p>
             <p>
               <b>Freeze when needed.</b> It pauses timing and locks editing. You can browse pages

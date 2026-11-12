@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import InkSurface from './ink-surface';
@@ -14,6 +14,7 @@ export function Dialog({
   close: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     ref.current?.showModal();
   }, []);
@@ -21,13 +22,14 @@ export function Dialog({
     <dialog
       ref={ref}
       className="dialog"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
         close();
       }}
     >
       <div className="dialog-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-button" onClick={close} aria-label="Close dialogue">
           <X size={20} />
         </button>

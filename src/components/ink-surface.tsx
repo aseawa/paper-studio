@@ -31,7 +31,8 @@ type Props = {
   width: number;
   locked: boolean;
   onEdit: (before: Stroke[], after: Stroke[]) => void;
-  onInput: (kind: string, pressure: number) => void;
+  onInput?: (kind: string, pressure: number) => void;
+  panWithTouch?: boolean;
   finishRef: MutableRefObject<(() => void) | null>;
 };
 type ActiveStroke = {
@@ -49,6 +50,7 @@ export default function InkSurface(props: Props) {
   latest.current = props;
   const lastInput = useRef(0);
   const active = useRef<ActiveStroke | null>(null);
+  const touchPan = useRef<{ id: number; x: number; y: number; el: HTMLElement } | null>(null);
   const repaint = () => {
     const canvas = saved.current;
     if (!canvas) return;
@@ -88,6 +90,7 @@ export default function InkSurface(props: Props) {
   useEffect(
     () => () => {
       active.current = null;
+      touchPan.current = null;
     },
     [],
   );
@@ -118,10 +121,26 @@ export default function InkSurface(props: Props) {
         className={`ink-layer live-ink ${props.tool}`}
         aria-label="Handwriting surface"
         data-testid="ink-canvas"
-        style={{ touchAction: props.locked || props.tool === 'hand' ? 'pan-x pan-y' : 'none' }}
+        style={{
+          touchAction: props.panWithTouch
+            ? 'none'
+            : props.locked || props.tool === 'hand'
+              ? 'pan-x pan-y'
+              : 'none',
+        }}
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
-          if (e.pointerType === 'touch' || active.current) return;
+          if (e.pointerType === 'touch') {
+            if (!props.panWithTouch || active.current || touchPan.current) return;
+            const el = live.current!.closest('.paper-viewport') as HTMLElement | null;
+            if (!el) return;
+            e.preventDefault();
+            touchPan.current = { id: e.pointerId, x: e.clientX, y: e.clientY, el };
+            e.currentTarget.setPointerCapture(e.pointerId);
+            return;
+          }
+          if (active.current) return;
+          if (e.pointerType === 'pen') touchPan.current = null;
           if (
             props.tool !== 'hand' &&
             (props.locked || (e.button !== 0 && e.pointerType !== 'pen'))
@@ -150,12 +169,22 @@ export default function InkSurface(props: Props) {
           }
           active.current = a;
           e.currentTarget.setPointerCapture(e.pointerId);
-          props.onInput(e.pointerType, e.pressure);
+          props.onInput?.(e.pointerType, e.pressure);
           if (a.pan) return;
           if (a.erase) erase(p);
           else paintStroke(live.current!.getContext('2d')!, a.line);
         }}
         onPointerMove={(e) => {
+          if (e.pointerType === 'touch') {
+            const pan = touchPan.current;
+            if (pan && pan.id === e.pointerId && !active.current) {
+              pan.el.scrollLeft += pan.x - e.clientX;
+              pan.el.scrollTop += pan.y - e.clientY;
+              pan.x = e.clientX;
+              pan.y = e.clientY;
+            }
+            return;
+          }
           const a = active.current;
           if (!a || a.id !== e.pointerId) return;
           if (a.pan) {
@@ -168,7 +197,7 @@ export default function InkSurface(props: Props) {
             return;
           }
           if (performance.now() - lastInput.current > 150) {
-            props.onInput(e.pointerType, e.pressure);
+            props.onInput?.(e.pointerType, e.pressure);
             lastInput.current = performance.now();
           }
           const coalesced = e.nativeEvent.getCoalescedEvents?.() || [];
@@ -185,13 +214,23 @@ export default function InkSurface(props: Props) {
           }
         }}
         onPointerUp={(e) => {
+          if (e.pointerType === 'touch') {
+            if (touchPan.current?.id === e.pointerId) touchPan.current = null;
+            return;
+          }
           if (active.current?.id === e.pointerId) {
-            props.onInput(e.pointerType, e.pressure);
+            props.onInput?.(e.pointerType, e.pressure);
             finish();
           }
         }}
-        onPointerCancel={finish}
-        onLostPointerCapture={finish}
+        onPointerCancel={(e) => {
+          if (touchPan.current?.id === e.pointerId) touchPan.current = null;
+          if (active.current?.id === e.pointerId) finish();
+        }}
+        onLostPointerCapture={(e) => {
+          if (touchPan.current?.id === e.pointerId) touchPan.current = null;
+          if (active.current?.id === e.pointerId) finish();
+        }}
       />
     </>
   );

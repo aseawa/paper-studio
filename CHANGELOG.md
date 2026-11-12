@@ -1,5 +1,14 @@
 # Changelog / 版本紀錄
 
+## 2.1.0 — 2026-11-12
+
+### English
+
+- Give the paper more room with a compact toolbar, floating page navigation and on-demand pages and MC panels.
+- Let a finger drag move the paper while pen and mouse input remain available for writing.
+- Keep timing, freeze, export, zoom, pen width and extra answer sheets accessible in the simplified workspace.
+- Show returning users a dismissible notice about the new layout.
+
 ## 2.0.1 — 2026-11-12
 
 ### English
