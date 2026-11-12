@@ -1,0 +1,70 @@
+name: Publish release
+
+on:
+  workflow_run:
+    workflows: [Checks and Pages]
+    branches: [main]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: paper-studio-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Publish the tested version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          current_commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [[ "$current_commit" != "$TESTED_COMMIT" ]]; then
+            echo 'A newer commit is on main. Its checks will handle the release.'
+            exit 0
+          fi
+
+          version=$(node -p "require('./package.json').version")
+          if [[ ! "$version" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+            echo 'The package version must have major, minor and patch numbers.' >&2
+            exit 1
+          fi
+          tag="v$version"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists."
+            exit 0
+          fi
+          if git rev-parse "$tag^{commit}" >/dev/null 2>&1; then
+            if [[ "$(git rev-parse "$tag^{commit}")" != "$TESTED_COMMIT" ]]; then
+              echo "Tag $tag points to a different commit." >&2
+              exit 1
+            fi
+          fi
+
+          awk -v version="$version" '
+            /^## / {
+              if (found) exit
+              if ($2 == version) { found = 1; next }
+            }
+            found { print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > "$RUNNER_TEMP/paper-studio-release-notes.md"
+          test -s "$RUNNER_TEMP/paper-studio-release-notes.md"
+          gh release create "$tag" --target "$TESTED_COMMIT" --title "Paper Studio $tag" \
+            --notes-file "$RUNNER_TEMP/paper-studio-release-notes.md" --latest

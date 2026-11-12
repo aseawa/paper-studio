@@ -23,7 +23,7 @@ Paper Studio 為試卷、工作紙、教科書及研究論文提供同一個閱�
 
 ## 使用方法
 
-1. 使用新版桌面 Chrome 或 Edge 開啟[公開示範](https://aseawa.github.io/paper-studio/)。
+1. 使用新版桌面 Chrome 或 Edge，或 iPadOS 18 及以上版本的 Safari 或 Chrome，開啟[公開示範](https://aseawa.github.io/paper-studio/)。
 2. 按 **Import PDF**，輸入文件名稱，並選擇 **Stopwatch**（正向計時）、**Countdown**（倒數計時）或 **Off**（關閉計時）。如需選擇題答案格，可展開 **Paper options**。
 3. 開啟 PDF 後按 **Start**，即可書寫。**Pen check** 可顯示筆驅動程式回報的輸入類型及壓力。
 4. 按 **Freeze** 暫停。編輯鎖定期間仍可瀏覽頁面，按 **Resume** 繼續。

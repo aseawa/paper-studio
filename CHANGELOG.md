@@ -1,5 +1,21 @@
 # Changelog / 版本紀錄
 
+## 2.0.1 — 2026-11-12
+
+### English
+
+- Fix PDF pages failing to render in iPad browsers that do not yet provide newer JavaScript Map methods.
+- Use matching compatible PDF.js renderer and worker builds, with a versioned worker URL to avoid an outdated cached worker.
+- Add a regression check that renders a PDF when those Map methods are unavailable.
+- Show returning users a dismissible notice about the iPad rendering update.
+
+### 繁體中文
+
+- 修正部分 iPad 瀏覽器未支援較新 JavaScript Map 方法時，PDF 頁面無法顯示的問題。
+- 使用相容的 PDF.js 顯示程式及背景工作程式，並為工作程式網址加入版本資訊，避免使用舊快取。
+- 新增回歸檢查，確保缺少這些 Map 方法時仍可顯示 PDF 頁面。
+- 為有已儲存文件的使用者顯示可關閉的 iPad 修正通知。
+
 ## 2.0.0 — 2026-11-11
 
 ### English

@@ -7,11 +7,11 @@ import {
   type Practice,
   type PaperPage,
 } from './practice.ts';
-let pdfjs: typeof import('pdfjs-dist') | undefined;
+let pdfjs: typeof import('pdfjs-dist/legacy/build/pdf.mjs') | undefined;
 export async function openPdf(bytes: Uint8Array) {
-  pdfjs ||= await import('pdfjs-dist');
+  pdfjs ||= await import('pdfjs-dist/legacy/build/pdf.mjs');
   const base = import.meta.env?.BASE_URL || '/';
-  pdfjs.GlobalWorkerOptions.workerSrc = `${base}pdf/pdf.worker.min.mjs`;
+  pdfjs.GlobalWorkerOptions.workerSrc = `${base}pdf/pdf.worker.min.mjs?version=${pdfjs.version}-legacy`;
   const task = pdfjs.getDocument({
     data: new Uint8Array(bytes),
     cMapUrl: `${base}pdf/cmaps/`,

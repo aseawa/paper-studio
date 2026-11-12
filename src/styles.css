@@ -1124,6 +1124,18 @@ input {
   flex-shrink: 0;
   line-height: 1.5;
 }
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #eaf2ff;
+  color: #174a8b;
+  font-size: 12px;
+  padding: 10px 25px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
 .info-banner {
   display: flex;
   align-items: center;

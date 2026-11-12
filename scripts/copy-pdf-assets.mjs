@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 
 await fs.mkdir('public/pdf', { recursive: true });
 await fs.copyFile(
-  'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+  'node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   'public/pdf/pdf.worker.min.mjs',
 );
 await fs.copyFile('node_modules/pdfjs-dist/LICENSE', 'public/pdf/LICENSE');

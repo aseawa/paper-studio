@@ -23,7 +23,7 @@ Paper Studio gives exam papers, worksheets, textbooks and research papers a shar
 
 ## Use the app
 
-1. Open the [public demo](https://aseawa.github.io/paper-studio/) in a current desktop Chrome or Edge browser.
+1. Open the [public demo](https://aseawa.github.io/paper-studio/) in a current desktop Chrome or Edge browser, or in Safari or Chrome on iPadOS 18 or later.
 2. Choose **Import PDF**, enter a document name and select **Stopwatch**, **Countdown** or **Off**. Open **Paper options** to configure an MC grid.
 3. Open the PDF, press **Start**, and write. Use **Pen check** to inspect the input reported by your pen driver.
 4. Press **Freeze** to pause. You can browse pages while editing is locked. Press **Resume** to continue.

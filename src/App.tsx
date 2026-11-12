@@ -63,6 +63,13 @@ export default function Studio() {
   const [busy, setBusy] = useState(''),
     [error, setError] = useState(''),
     [saved, setSaved] = useState('Saved on this device');
+  const [showUpdateNotice, setShowUpdateNotice] = useState(() => {
+    try {
+      return localStorage.getItem('paper-studio.dismissed-update') !== '2.0.1';
+    } catch {
+      return true;
+    }
+  });
   const [tool, setTool] = useState<InkTool>('pen'),
     [colour, setColour] = useState('#202124'),
     [width, setWidth] = useState(1.6);
@@ -577,6 +584,34 @@ export default function Studio() {
         <div className="error-banner" role="alert">
           <span>{error}</span>
           <button aria-label="Dismiss error" className="icon-button" onClick={() => setError('')}>
+            <X size={17} />
+          </button>
+        </div>
+      )}
+      {!s && library.length > 0 && showUpdateNotice && (
+        <div className="update-banner" role="status">
+          <span>
+            Paper Studio 2.0.1 improves PDF rendering on iPad.{' '}
+            <a
+              href="https://github.com/aseawa/paper-studio/releases"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Release notes
+            </a>
+          </span>
+          <button
+            aria-label="Dismiss update notification"
+            className="icon-button"
+            onClick={() => {
+              setShowUpdateNotice(false);
+              try {
+                localStorage.setItem('paper-studio.dismissed-update', '2.0.1');
+              } catch {
+                // The notification remains dismissed for this session.
+              }
+            }}
+          >
             <X size={17} />
           </button>
         </div>
